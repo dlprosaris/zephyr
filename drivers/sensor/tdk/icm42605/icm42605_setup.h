@@ -14,6 +14,6 @@ int icm42605_turn_on_fifo(const struct device *dev);
 int icm42605_turn_off_fifo(const struct device *dev);
 int icm42605_turn_off_sensor(const struct device *dev);
 int icm42605_turn_on_sensor(const struct device *dev);
-int icm42605_set_odr(const struct device *dev, int a_rate, int g_rate);
+int icm42605_set_odr(const struct device *dev, uint16_t a_rate, uint16_t g_rate);
 
 #endif /* __SENSOR_ICM42605_ICM42605_SETUP__ */

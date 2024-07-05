@@ -9,12 +9,19 @@
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/spi.h>
+#include <zephyr/drivers/sensor.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/types.h>
 
 #include "icm42605_reg.h"
+
+#define DT_DRV_COMPAT invensense_icm42605
+
+#define ICM42605_BUS_SPI DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
+#define ICM42605_BUS_I2C DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c)
 
 typedef void (*tap_fetch_t)(const struct device *dev);
 int icm42605_tap_fetch(const struct device *dev);
@@ -63,8 +70,40 @@ struct icm42605_data {
 #endif
 };
 
-struct icm42605_config {
+union icm42605_bus {
+#if ICM42605_BUS_SPI
 	struct spi_dt_spec spi;
+#endif
+#if ICM42605_BUS_I2C
+	struct i2c_dt_spec i2c;
+#endif
+};
+
+typedef int (*icm42605_bus_check_fn)(const union icm42605_bus *bus);
+typedef int (*icm42605_reg_read_fn)(const union icm42605_bus *bus, uint8_t reg, uint8_t *data, size_t len);
+typedef int (*icm42605_reg_write_fn)(const union icm42605_bus *bus, uint8_t reg, uint8_t val);
+
+int icm42605_bus_check(const struct device *dev);
+int icm42605_reg_read(const struct device *dev, uint8_t reg, uint8_t *data, size_t size);
+int icm42605_reg_write(const struct device *dev, uint8_t reg, uint8_t val);
+
+struct icm42605_bus_io {
+	icm42605_bus_check_fn check;
+	icm42605_reg_read_fn read;
+	icm42605_reg_write_fn write;
+};
+
+#if ICM42605_BUS_SPI
+extern const struct icm42605_bus_io icm42605_bus_io_spi;
+#endif
+
+#if ICM42605_BUS_I2C
+extern const struct icm42605_bus_io icm42605_bus_io_i2c;
+#endif
+
+struct icm42605_config {
+	union icm42605_bus bus;
+	const struct icm42605_bus_io *bus_io;
 	struct gpio_dt_spec gpio_int;
 	uint16_t accel_hz;
 	uint16_t gyro_hz;
