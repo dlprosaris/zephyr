@@ -1,4 +1,5 @@
 # Copyright (c) 2016 Jean-Paul Etienne <fractalclone@gmail.com>
+# Copyright (c) 2024 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: Apache-2.0
 
 menu "RISCV Options"
@@ -27,10 +28,19 @@ config RISCV_GP
 	  global pointer at program start or earlier than any instruction
 	  using GP relative addressing.
 
+config RISCV_CURRENT_VIA_GP
+	bool "Store current thread into the global pointer (GP) register"
+	depends on !RISCV_GP && !USERSPACE
+	depends on MP_MAX_NUM_CPUS > 1
+	select ARCH_HAS_CUSTOM_CURRENT_IMPL
+	help
+	  Store the current thread's pointer into the global pointer (GP) register.
+	  When is enabled, calls to `arch_current_thread()` & `k_sched_current_thread_query()` will
+	  be reduced to a single register read.
+
 config RISCV_ALWAYS_SWITCH_THROUGH_ECALL
 	bool "Do not use mret outside a trap handler context"
 	depends on MULTITHREADING
-	depends on !RISCV_PMP
 	help
 	  Use mret instruction only when in a trap handler.
 	  This is for RISC-V implementations that require every mret to be
@@ -38,12 +48,30 @@ config RISCV_ALWAYS_SWITCH_THROUGH_ECALL
 	  and most people should say n here to minimize context switching
 	  overhead.
 
-config RISCV_EXCEPTION_STACK_TRACE
-	bool
-	default y
-	imply THREAD_STACK_INFO
+choice RISCV_SMP_IPI_IMPL
+	prompt "RISC-V SMP IPI implementation"
+	depends on SMP
+	default RISCV_SMP_IPI_CLINT if DT_HAS_SIFIVE_CLINT0_ENABLED
+	default RISCV_SMP_IPI_CUSTOM
+
+config RISCV_SMP_IPI_CLINT
+	bool "CLINT-based IPI"
+	depends on DT_HAS_SIFIVE_CLINT0_ENABLED
 	help
-	  Internal config to enable runtime stack traces on fatal exceptions.
+	  Use CLINT-based IPI implementation.
+
+config RISCV_SMP_IPI_CUSTOM
+	bool "Custom IPI implementation"
+	help
+	  Allow custom IPI implementation.
+
+	  When this is selected, the following functions must be provided:
+	   - arch_sched_directed_ipi()
+	   - arch_flush_fpu_ipi() if CONFIG_FPU_SHARING
+	   - arch_spin_relax() if CONFIG_FPU_SHARING
+	   - arch_smp_init()
+
+endchoice # RISCV_SMP_IPI_IMPL
 
 menu "RISCV Processor Options"
 
@@ -246,6 +274,14 @@ config RISCV_HART_MASK
 	  i.e. 128, 129, ..(0x80, 8x81, ..), this can be configured to 63 (0x7f)
 	  such that we can extract the bits that start from 0.
 
+config EXTRA_EXCEPTION_INFO
+	bool "Collect extra exception info"
+	depends on EXCEPTION_DEBUG
+	help
+	  This option enables the collection of extra information, such as
+	  register state, when a fault occurs. This information can be useful
+	  to collect for post-mortem analysis and debug of issues.
+
 config RISCV_PMP
 	bool "RISC-V PMP Support"
 	select THREAD_STACK_INFO
@@ -311,7 +347,6 @@ endif #RISCV_PMP
 
 config PMP_STACK_GUARD
 	def_bool y
-	depends on MULTITHREADING
 	depends on HW_STACK_PROTECTION
 
 config PMP_STACK_GUARD_MIN_SIZE
@@ -350,6 +385,15 @@ config NULL_POINTER_EXCEPTION_REGION_SIZE
 
 endif # NULL_POINTER_EXCEPTION_DETECTION_PMP
 
+config RISCV_IMPRECISE_FPU_STATE_TRACKING
+	bool "Imprecise implementation of FPU state tracking"
+	depends on FPU
+	help
+	  According to the RISC-V Instruction Set Manual: Volume II, Version 20240411
+	  (Section 3.1.6.6), some implementations may choose to track the dirtiness of
+	  the floating-point register state imprecisely by reporting the state to be
+	  dirty even when it has not been modified. This option reflects that.
+
 endmenu
 
 config MAIN_STACK_SIZE
@@ -383,6 +427,14 @@ config GEN_IRQ_VECTOR_TABLE
 
 config ARCH_HAS_SINGLE_THREAD_SUPPORT
 	default y if !SMP
+
+config ARCH_HAS_STACKWALK
+	bool
+	default y
+	imply THREAD_STACK_INFO
+	help
+	  Internal config to indicate that the arch_stack_walk() API is implemented
+	  and it can be enabled.
 
 rsource "Kconfig.isa"
 

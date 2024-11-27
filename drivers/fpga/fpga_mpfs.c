@@ -15,7 +15,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/sys_io.h>
 #include <zephyr/sys/util.h>
-LOG_MODULE_REGISTER(fpga_mpfs);
+LOG_MODULE_REGISTER(fpga_mpfs, CONFIG_FPGA_LOG_LEVEL);
 
 #define SPI_FLASH_DIRECTORY_OFFSET    0x00000000
 #define SPI_FLASH_GOLDEN_IMAGE_OFFSET 0x00100400
@@ -58,7 +58,7 @@ static inline uint32_t scb_read(mm_reg_t add, mm_reg_t offset)
 
 static inline void scb_write(mm_reg_t add, mm_reg_t offset, uint32_t val)
 {
-	return sys_write32(val, add + offset);
+	sys_write32(val, add + offset);
 }
 
 /*This function add the index of new image into the spi directory at offset 0x004.

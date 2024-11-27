@@ -4,6 +4,10 @@
 
 if BOARD_APOLLO4P_BLUE_KXR_EVB
 
+config LOG_BACKEND_SWO_FREQ_HZ
+	default 1000000
+	depends on LOG_BACKEND_SWO
+
 if BT
 
 config MAIN_STACK_SIZE
@@ -13,10 +17,10 @@ config BT_BUF_ACL_TX_COUNT
 	default 14
 
 config BT_BUF_CMD_TX_SIZE
-	default 255
+	default $(UINT8_MAX)
 
 config BT_BUF_EVT_RX_SIZE
-	default 255
+	default $(UINT8_MAX)
 
 config BT_BUF_ACL_TX_SIZE
 	default 251

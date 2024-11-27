@@ -27,11 +27,7 @@
 #include <zephyr/bluetooth/buf.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/hci.h>
-#if DT_HAS_CHOSEN(zephyr_bt_hci)
 #include <zephyr/drivers/bluetooth.h>
-#else
-#include <zephyr/drivers/bluetooth/hci_driver.h>
-#endif
 
 #include "common/bt_str.h"
 
@@ -88,7 +84,7 @@ static void send_cmd_status(uint16_t opcode, uint8_t status)
 	struct bt_hci_evt_hdr *hdr;
 	struct net_buf *buf;
 
-	LOG_DBG("opcode %x status %x", opcode, status);
+	LOG_DBG("opcode %x status 0x%02x %s", opcode, status, bt_hci_err_to_str(status));
 
 	buf = bt_buf_get_evt(BT_HCI_EVT_CMD_STATUS, false, K_FOREVER);
 	bt_buf_set_type(buf, BT_BUF_EVT);
@@ -102,11 +98,7 @@ static void send_cmd_status(uint16_t opcode, uint8_t status)
 	evt->opcode = sys_cpu_to_le16(opcode);
 	evt->status = status;
 
-#if DT_HAS_CHOSEN(zephyr_bt_hci)
 	bt_hci_recv(bt_dev.hci, buf);
-#else
-	bt_recv(buf);
-#endif
 }
 
 #if defined(CONFIG_BT_USE_PSA_API)
@@ -217,11 +209,7 @@ static void emulate_le_p256_public_key_cmd(void)
 
 	atomic_clear_bit(flags, PENDING_PUB_KEY);
 
-#if DT_HAS_CHOSEN(zephyr_bt_hci)
 	bt_hci_recv(bt_dev.hci, buf);
-#else
-	bt_recv(buf);
-#endif
 }
 
 static void emulate_le_generate_dhkey(void)
@@ -303,11 +291,7 @@ exit:
 
 	atomic_clear_bit(flags, PENDING_DHKEY);
 
-#if DT_HAS_CHOSEN(zephyr_bt_hci)
 	bt_hci_recv(bt_dev.hci, buf);
-#else
-	bt_recv(buf);
-#endif
 }
 
 static void ecc_process(struct k_work *work)
@@ -432,11 +416,7 @@ int bt_hci_ecc_send(struct net_buf *buf)
 		}
 	}
 
-#if DT_HAS_CHOSEN(zephyr_bt_hci)
 	return bt_hci_send(bt_dev.hci, buf);
-#else
-	return bt_dev.drv->send(buf);
-#endif
 }
 
 void bt_hci_ecc_supported_commands(uint8_t *supported_commands)

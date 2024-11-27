@@ -36,7 +36,7 @@ def extract_fields_from_arg_list(target_fields: set, arg_list: Union[str, list])
             # Move to other_fields
             other_fields.append(field)
 
-    return extracted_fields, " ".join(other_fields)
+    return extracted_fields, other_fields
 
 class TwisterConfigParser:
     """Class to read testsuite yaml files with semantic checking
@@ -61,6 +61,8 @@ class TwisterConfigParser:
                        "min_flash": {"type": "int", "default": 32},
                        "arch_allow": {"type": "set"},
                        "arch_exclude": {"type": "set"},
+                       "vendor_allow": {"type": "set"},
+                       "vendor_exclude": {"type": "set"},
                        "extra_sections": {"type": "list", "default": []},
                        "integration_platforms": {"type": "list", "default": []},
                        "ignore_faults": {"type": "bool", "default": False },
@@ -93,12 +95,14 @@ class TwisterConfigParser:
         self.common = {}
 
     def load(self):
-        self.data = scl.yaml_load_verify(self.filename, self.schema)
+        data = scl.yaml_load_verify(self.filename, self.schema)
+        self.data = data
 
         if 'tests' in self.data:
             self.scenarios = self.data['tests']
         if 'common' in self.data:
             self.common = self.data['common']
+        return data
 
     def _cast_value(self, value, typestr):
         if isinstance(value, str):
